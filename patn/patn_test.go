@@ -1,15 +1,12 @@
-package patner
+package patn
 
 import (
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/abo/patnsvc"
 )
 
-var p patnsvc.Service
+var p Patner
 
 func init() {
 	p = NewPatner()
@@ -22,11 +19,11 @@ func TestGenerate(t *testing.T) {
 209.160.24.63 - - [15/May/2015:18:22:20] "GET /product.screen?productId=FS-SG-G03&JSESSIONID=SD0SL6FF7ADFF4953 HTTP 1.1" 200 2047 "http://www.buttercupgames.com/category.screen?categoryId=STRATEGY" "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5" 487`
 	lines := strings.Split(nginx, "\n")
 
-	generateAndExtract(t, lines, "209.160.24.63", []string{"209.160.24.63", "209.160.24.63", "209.160.24.63", "209.160.24.63"})
-	generateAndExtract(t, lines, "15/May/2015:18:22:16", []string{"15/May/2015:18:22:16", "15/May/2015:18:22:17", "15/May/2015:18:22:19", "15/May/2015:18:22:20"})
-	generateAndExtract(t, lines, "[15/May/2015:18:22:16]", []string{"[15/May/2015:18:22:16]", "[15/May/2015:18:22:17]", "[15/May/2015:18:22:19]", "[15/May/2015:18:22:20]"})
-	generateAndExtract(t, lines, "18:22:16", []string{"18:22:16", "18:22:17", "18:22:19", "18:22:20"})
-	generateAndExtract(t, lines, "GET", []string{"GET", "GET", "POST", "GET"})
+	generateAndExtract(t, lines[0], []string{"209.160.24.63", "15/May/2015:18:22:16", "[15/May/2015:18:22:16]", "18:22:16", "GET"}, lines, [][]string{
+		[]string{"209.160.24.63", "15/May/2015:18:22:16", "[15/May/2015:18:22:16]", "18:22:16", "GET"},
+		[]string{"209.160.24.63", "15/May/2015:18:22:17", "[15/May/2015:18:22:17]", "18:22:17", "GET"},
+		[]string{"209.160.24.63", "15/May/2015:18:22:19", "[15/May/2015:18:22:19]", "18:22:19", "POST"},
+		[]string{"209.160.24.63", "15/May/2015:18:22:20", "[15/May/2015:18:22:20]", "18:22:20", "GET"}})
 }
 
 func TestMailsv(t *testing.T) {
@@ -49,31 +46,25 @@ Thu May 15 2015 00:15:05 mailsv1 sshd[5555]: Failed password for invalid user no
 Thu May 15 2015 00:15:05 mailsv1 sshd[1258]: Failed password for invalid user web002 from 175.44.1.172 port 4851 ssh2
 Thu May 15 2015 00:15:05 mailsv1 sshd[12190]: pam_unix(sshd:session): session opened for user djohnson by (uid=0)`
 	lines := strings.Split(mailsv, "\n")
-	generateAndExtract(t, lines, "2716", []string{"2716",
-		"2596", "24947", "3006", "5298", "5196", "4472", "63551", "5237", "5737", "4508", "1254", "46748", "5730", "3202", "5555", "1258", "12190"})
+	generateAndExtract(t, lines[0], []string{"2716"}, lines, [][]string{[]string{"2716"},
+		[]string{"2596"}, []string{"24947"}, []string{"3006"}, []string{"5298"}, []string{"5196"}, []string{"4472"}, []string{"63551"}, []string{"5237"}, []string{"5737"}, []string{"4508"}, []string{"1254"}, []string{"46748"}, []string{"5730"}, []string{"3202"}, []string{"5555"}, []string{"1258"}, []string{"12190"}})
 }
 
-func generateAndExtract(t *testing.T, lines []string, field string, expect []string) {
-	ps, err := p.Generate([]patnsvc.Line{
-		patnsvc.Line{
-			Raw:      lines[0],
-			Expected: field,
-		},
-	})
+func generateAndExtract(t *testing.T, sample string, targets []string, raw []string, expect [][]string) {
+	exprs, err := p.Generate(sample, targets)
 	if err != nil {
 		t.Fatal("generate failed", err)
 	}
 
-	re := regexp.MustCompile(ps[0].Expr)
-	fields := make([]string, len(lines))
-	for i, v := range lines {
-		matches := re.FindStringSubmatch(v)
-		if len(matches) >= 2 {
-			fields[i] = matches[1]
-		}
+	extractor, err := NewExtractor(exprs)
+	if err != nil {
+		t.Fatal("invalid expr", err)
 	}
 
-	if !reflect.DeepEqual(fields, expect) {
-		t.Fatal("expect: ", expect, " actual: ", fields)
+	for i, v := range raw {
+		ret := extractor.Extract(v)
+		if !reflect.DeepEqual(expect[i], ret) {
+			t.Fatal("expect: ", expect[i], " actual: ", ret, " on raw ", v)
+		}
 	}
 }

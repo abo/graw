@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 
-	"github.com/abo/graw/patner"
-	patn "github.com/abo/patnsvc"
+	"github.com/abo/graw/patn"
 )
 
 const (
@@ -19,29 +18,26 @@ const (
 
 usage: graw [<options>] [<file>]	
 
-	-v, --verbose		be more verbose
-	-V, --version		print version and quit
-	-e, --expected <fields> expected fields of first line, FIELD1 FIELD2...
-	-m, --maxsamples <n>	Only sample up to <n> lines
-	-f, --format		output format
+	-v, --verbose      be more verbose
+	-V, --version      print version and quit
+	-t <parts>         target parts of first line, PART1 PART2...
+	-f, --format       output format
 `
 )
 
 var (
-	version    bool
-	verbose    bool
-	expected   = flag.String("e", "", "expected fields of first line, FIELD1 FIELD2...")
-	maxsamples uint
-	format     string
+	version bool
+	verbose bool
+	target  = flag.String("t", "", "target parts of first line, PART1 PART2...")
+	format  string
+	patner  = patn.NewPatner()
 )
 
 func init() {
 	flag.BoolVar(&version, "V", false, "Show version number and quit")
 	flag.BoolVar(&version, "version", false, "Show version number and quit")
 	flag.BoolVar(&verbose, "v", false, "Print the generated pattern")
-	flag.BoolVar(&verbose, "verbose", false, "Print the generated pattern")
-	flag.UintVar(&maxsamples, "m", 1, "sample up to n lines")
-	flag.UintVar(&maxsamples, "maxsamples", 1, "sample up to n lines")
+	flag.BoolVar(&verbose, "verbose", false, "Print the generated patterns")
 	flag.StringVar(&format, "f", "", "format the output")
 	flag.StringVar(&format, "format", "", "format the output")
 }
@@ -60,50 +56,34 @@ func contains(str string, substrs []string) bool {
 	return true
 }
 
-func sample(raw []string, exp string) []patn.Line {
-	fs := strings.Split(exp, " ")
-	var ret []patn.Line
-	for _, l := range raw {
-		if contains(l, fs) {
-			for _, f := range fs {
-				ret = append(ret, patn.Line{
-					Raw:      l,
-					Expected: f,
-				})
-			}
-		}
+func newExtractor(raw string, parts []string) (extractor patn.Extractor, ok bool) {
+	if !contains(raw, parts) {
+		return patn.Extractor{}, false
 	}
-	return ret
+
+	if verbose {
+		fmt.Printf("raw line selected: %s\ngenerating pattern...\n", raw)
+	}
+	exprs, err := patner.Generate(raw, parts)
+	if err != nil {
+		exit(fmt.Sprint("cannot generate pattern.", err))
+	}
+
+	if verbose {
+		fmt.Println("patterns generated: ", exprs)
+	}
+	extractor, err = patn.NewExtractor(exprs)
+	if err != nil {
+		exit(fmt.Sprint("invalid pattern generated.", err))
+	}
+	return extractor, true
 }
 
-func compile(patns []patn.Pattern) []*regexp.Regexp {
-	var res []*regexp.Regexp
-	for _, p := range patns {
-		if re, err := regexp.Compile(p.Expr); err == nil {
-			res = append(res, re)
-		}
-	}
-	return res
+func output(w io.Writer, parts []string) {
+	fmt.Fprintln(w, parts)
 }
 
-func extract(regexps []*regexp.Regexp, raw string) []string {
-	ret := make([]string, len(regexps))
-	for i, re := range regexps {
-		matches := re.FindStringSubmatch(raw)
-		if len(matches) >= 2 {
-			ret[i] = matches[1]
-		}
-	}
-	return ret
-}
-
-//TODO subcommand - regexp, extract
 func main() {
-	// 1. sample data for pattern generation (need top n?)
-	// 2. generate pattern & compile?
-	// 3. extract fields
-	// 4. format & output
-
 	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds)
 	flag.Usage = func() {
 		exit(usageinfo)
@@ -114,46 +94,41 @@ func main() {
 		exit(fmt.Sprintf("graw version %s", currentVersion))
 	}
 
-	if *expected == "" {
+	if *target == "" {
 		exit(usageinfo)
 	}
+	parts := strings.Fields(*target)
 
-	var top []string
+	var (
+		extractor patn.Extractor
+		inited    bool
+		pending   []string
+	)
+
 	scanner := bufio.NewScanner(os.Stdin)
-	for i := uint(0); i < maxsamples && scanner.Scan(); i++ {
-		l := scanner.Text()
-		top = append(top, l)
-	}
-
-	spls := sample(top, *expected)
-
-	if len(spls) == 0 {
-		exit(fmt.Sprintf("the expected(%s) not found in top %d line(s)", *expected, maxsamples))
-	}
-
-	patner := patner.NewPatner()
-	patns, err := patner.Generate(spls)
-	if verbose {
-		fmt.Println(patns)
-	}
-	if err != nil {
-		exit(err.Error())
-	}
-
-	regexps := compile(patns)
-
-	for _, l := range top {
-		matches := extract(regexps, l)
-		fmt.Println(strings.Join(matches, "\t"))
-	}
-
 	for scanner.Scan() {
-		matches := extract(regexps, scanner.Text())
-		fmt.Println(strings.Join(matches, "\t"))
+		l := scanner.Text()
+
+		if inited {
+			output(os.Stdout, extractor.Extract(l))
+			continue
+		}
+
+		pending = append(pending, l)
+
+		if extractor, inited = newExtractor(l, parts); inited {
+			for _, v := range pending {
+				output(os.Stdout, extractor.Extract(v))
+			}
+			pending = nil
+		}
+	}
+
+	if !inited {
+		exit(fmt.Sprintf("the target(%s) not found in any line", *target))
 	}
 
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
-
 }
