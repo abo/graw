@@ -20,10 +20,10 @@ func TestGenerate(t *testing.T) {
 	lines := strings.Split(nginx, "\n")
 
 	generateAndExtract(t, lines[0], []string{"209.160.24.63", "15/May/2015:18:22:16", "[15/May/2015:18:22:16]", "18:22:16", "GET"}, lines, [][]string{
-		[]string{"209.160.24.63", "15/May/2015:18:22:16", "[15/May/2015:18:22:16]", "18:22:16", "GET"},
-		[]string{"209.160.24.63", "15/May/2015:18:22:17", "[15/May/2015:18:22:17]", "18:22:17", "GET"},
-		[]string{"209.160.24.63", "15/May/2015:18:22:19", "[15/May/2015:18:22:19]", "18:22:19", "POST"},
-		[]string{"209.160.24.63", "15/May/2015:18:22:20", "[15/May/2015:18:22:20]", "18:22:20", "GET"}})
+		{"209.160.24.63", "15/May/2015:18:22:16", "[15/May/2015:18:22:16]", "18:22:16", "GET"},
+		{"209.160.24.63", "15/May/2015:18:22:17", "[15/May/2015:18:22:17]", "18:22:17", "GET"},
+		{"209.160.24.63", "15/May/2015:18:22:19", "[15/May/2015:18:22:19]", "18:22:19", "POST"},
+		{"209.160.24.63", "15/May/2015:18:22:20", "[15/May/2015:18:22:20]", "18:22:20", "GET"}})
 }
 
 func TestMailsv(t *testing.T) {
@@ -46,8 +46,8 @@ Thu May 15 2015 00:15:05 mailsv1 sshd[5555]: Failed password for invalid user no
 Thu May 15 2015 00:15:05 mailsv1 sshd[1258]: Failed password for invalid user web002 from 175.44.1.172 port 4851 ssh2
 Thu May 15 2015 00:15:05 mailsv1 sshd[12190]: pam_unix(sshd:session): session opened for user djohnson by (uid=0)`
 	lines := strings.Split(mailsv, "\n")
-	generateAndExtract(t, lines[0], []string{"2716"}, lines, [][]string{[]string{"2716"},
-		[]string{"2596"}, []string{"24947"}, []string{"3006"}, []string{"5298"}, []string{"5196"}, []string{"4472"}, []string{"63551"}, []string{"5237"}, []string{"5737"}, []string{"4508"}, []string{"1254"}, []string{"46748"}, []string{"5730"}, []string{"3202"}, []string{"5555"}, []string{"1258"}, []string{"12190"}})
+	generateAndExtract(t, lines[0], []string{"2716"}, lines, [][]string{{"2716"},
+		{"2596"}, {"24947"}, {"3006"}, {"5298"}, {"5196"}, {"4472"}, {"63551"}, {"5237"}, {"5737"}, {"4508"}, {"1254"}, {"46748"}, {"5730"}, {"3202"}, {"5555"}, {"1258"}, {"12190"}})
 }
 
 func generateAndExtract(t *testing.T, sample string, targets []string, raw []string, expect [][]string) {
