@@ -1,0 +1,20 @@
+---
+language: go
+go:
+    - 1.5
+    - 1.6
+    - tip
+
+install:
+    - go get -v -t ./...
+
+before_script:
+    # sleep a bit to allow things to get set up
+    # - sleep 10
+
+script:
+    - go test -v ./patn/...
+    - go build -v ./cmd/graw/...
+
+after_failure:
+    - tail -n100 ./*.log

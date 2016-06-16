@@ -24,4 +24,4 @@ _testmain.go
 *.prof
 
 
-cmd/graw/graw
+graw
