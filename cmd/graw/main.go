@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -31,6 +32,7 @@ var (
 	target  = flag.String("t", "", "target parts of first line, PART1 PART2...")
 	format  string
 	patner  = patn.NewPatner()
+	tpl     = template.New("graw")
 )
 
 func init() {
@@ -38,8 +40,8 @@ func init() {
 	flag.BoolVar(&version, "version", false, "Show version number and quit")
 	flag.BoolVar(&verbose, "v", false, "Print the generated pattern")
 	flag.BoolVar(&verbose, "verbose", false, "Print the generated patterns")
-	flag.StringVar(&format, "f", "", "format the output")
-	flag.StringVar(&format, "format", "", "format the output")
+	flag.StringVar(&format, "f", "{{range .}}{{.}} {{end}}", "format the output")
+	flag.StringVar(&format, "format", "{{range .}}{{.}} {{end}}", "format the output") //TODO
 }
 
 func exit(msg string) {
@@ -80,7 +82,8 @@ func newExtractor(raw string, parts []string) (extractor patn.Extractor, ok bool
 }
 
 func output(w io.Writer, parts []string) {
-	fmt.Fprintln(w, parts)
+	tpl.Execute(w, parts)
+	fmt.Fprintln(w)
 }
 
 func main() {
@@ -98,6 +101,10 @@ func main() {
 		exit(usageinfo)
 	}
 	parts := strings.Fields(*target)
+
+	if _, err := tpl.Parse(format); err != nil {
+		exit(fmt.Sprintf("invalid format: %s", format))
+	}
 
 	var (
 		extractor patn.Extractor
