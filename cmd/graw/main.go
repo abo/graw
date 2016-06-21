@@ -17,11 +17,10 @@ const (
 	currentVersion = "0.0.1"
 	usageinfo      = `graw - A pattern generator and searcher.
 
-usage: graw [<options>] [<file>]	
+usage: graw [<options>] FIELD1 FIELD2
 
 	-v, --verbose      be more verbose
 	-V, --version      print version and quit
-	-t <parts>         target parts of first line, PART1 PART2...
 	-f, --format       output format
 `
 )
@@ -29,7 +28,6 @@ usage: graw [<options>] [<file>]
 var (
 	version bool
 	verbose bool
-	target  = flag.String("t", "", "target parts of first line, PART1 PART2...")
 	format  string
 	patner  = patn.NewPatner()
 	tpl     = template.New("graw")
@@ -41,7 +39,7 @@ func init() {
 	flag.BoolVar(&verbose, "v", false, "Print the generated pattern")
 	flag.BoolVar(&verbose, "verbose", false, "Print the generated patterns")
 	flag.StringVar(&format, "f", "{{range .}}{{.}} {{end}}", "format the output")
-	flag.StringVar(&format, "format", "{{range .}}{{.}} {{end}}", "format the output") //TODO
+	flag.StringVar(&format, "format", "{{range .}}{{.}} {{end}}", "format the output")
 }
 
 func exit(msg string) {
@@ -97,10 +95,10 @@ func main() {
 		exit(fmt.Sprintf("graw version %s", currentVersion))
 	}
 
-	if *target == "" {
+	parts := flag.Args()
+	if len(parts) == 0 {
 		exit(usageinfo)
 	}
-	parts := strings.Fields(*target)
 
 	if _, err := tpl.Parse(format); err != nil {
 		exit(fmt.Sprintf("invalid format: %s", format))
@@ -132,7 +130,7 @@ func main() {
 	}
 
 	if !inited {
-		exit(fmt.Sprintf("the target(%s) not found in any line", *target))
+		exit(fmt.Sprintf("the target(%v) not found in any line", parts))
 	}
 
 	if err := scanner.Err(); err != nil {
