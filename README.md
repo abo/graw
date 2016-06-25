@@ -42,7 +42,7 @@ Example
     18:34:12
     18:34:13
     18:34:15
-    ~ abo$ cat nginx_access.log | graw -f "{{index . 1}} -- {{index . 0}}" /product.screen 74.125.19.106
+    ~ abo$ cat nginx_access.log | graw -format="{{index . 1}} -- {{index . 0}}" /product.screen 74.125.19.106
     74.125.19.106 -- /product.screen
     203.223.0.20 -- /category.screen
     203.223.0.20 -- /category.screen

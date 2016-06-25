@@ -1,9 +1,11 @@
-package patn
+package patn_test
 
 import (
 	"reflect"
 	"strings"
 	"testing"
+
+	. "github.com/abo/graw/patn"
 )
 
 var p Patner
